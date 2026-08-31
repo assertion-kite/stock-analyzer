@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Lens - A股行情与AI研究</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+    <header class="topbar">
+        <div>
+            <p class="product-kicker">STOCK LENS</p>
+            <h1>A股行情与AI研究</h1>
+        </div>
+        <div class="market-badge"><span></span> 实时行情</div>
+    </header>
+
+    <nav class="tabs" aria-label="主导航">
+        <button class="tab active" data-tab="market">行情搜索</button>
+        <button class="tab" data-tab="watchlist">我的自选</button>
+        <button class="tab" data-tab="sectors">板块主线</button>
+        <button class="tab" data-tab="sector-strength">龙头 Top10</button>
+        <button class="tab" data-tab="ranking-logs">排名日志</button>
+        <button class="tab" data-tab="capital-flow">资金流向</button>
+        <button class="tab" data-tab="research">AI研究室</button>
+    </nav>
+
+    <main>
+        <section id="tab-market" class="tab-panel active">
+            <form id="search-form" class="search-bar">
+                <label class="sr-only" for="search-input">股票名称、代码或板块</label>
+                <input id="search-input" type="search" placeholder="输入股票或板块，例如 贵州茅台、600519、机器人" autocomplete="off">
+                <button id="search-btn" type="submit">搜索</button>
+            </form>
+
+            <div id="search-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在查找股票...</p>
+            </div>
+
+            <section id="search-results-section" class="search-results-section hidden" aria-live="polite">
+                <div class="section-heading">
+                    <h2>搜索结果</h2>
+                    <span id="search-result-count"></span>
+                </div>
+                <div id="search-results" class="search-results"></div>
+            </section>
+
+            <div id="market-empty" class="empty-state">
+                <strong>搜索股票或板块</strong>
+                <p>股票展示行情与K线；行业或概念板块直接进入龙头分时强度。</p>
+            </div>
+
+            <div id="overview-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在获取实时行情...</p>
+            </div>
+
+            <section id="stock-overview" class="stock-overview hidden" aria-live="polite">
+                <div class="overview-header">
+                    <div>
+                        <div class="stock-title-row">
+                            <h2 id="overview-name"></h2>
+                            <span id="overview-code" class="stock-code"></span>
+                            <span id="overview-industry" class="industry-tag"></span>
+                        </div>
+                        <p id="overview-time" class="data-time"></p>
+                    </div>
+                    <div class="overview-actions">
+                        <button id="overview-watch-btn" class="button-secondary" type="button">加入自选</button>
+                        <button id="overview-ai-btn" class="button-primary" type="button">AI研判</button>
+                    </div>
+                </div>
+
+                <div class="quote-strip">
+                    <div class="quote-primary">
+                        <span id="overview-price" class="quote-price"></span>
+                        <span id="overview-change" class="quote-change"></span>
+                    </div>
+                    <div class="quote-metrics">
+                        <div><span>今开</span><strong id="metric-open"></strong></div>
+                        <div><span>最高</span><strong id="metric-high"></strong></div>
+                        <div><span>最低</span><strong id="metric-low"></strong></div>
+                        <div><span>昨收</span><strong id="metric-close"></strong></div>
+                        <div><span>成交量</span><strong id="metric-volume"></strong></div>
+                        <div><span>成交额</span><strong id="metric-turnover"></strong></div>
+                    </div>
+                </div>
+
+                <section class="chart-section">
+                    <div class="section-heading chart-heading">
+                        <div>
+                            <h2>价格走势</h2>
+                            <p>图表来自公开行情源，以交易所最终数据为准</p>
+                        </div>
+                        <div class="segmented" role="group" aria-label="图表周期">
+                            <button class="chart-mode active" data-chart="minute" type="button">分时</button>
+                            <button class="chart-mode" data-chart="daily" type="button">日K</button>
+                        </div>
+                    </div>
+                    <div class="chart-frame">
+                        <img id="stock-chart" alt="股票走势图">
+                        <p id="chart-error" class="chart-error hidden">图表暂时无法加载，请稍后重试。</p>
+                    </div>
+                </section>
+
+                <section class="fundamentals-section">
+                    <div class="section-heading fundamentals-heading">
+                        <div>
+                            <h2>公司研究资料</h2>
+                            <p id="fundamentals-status">等待加载</p>
+                        </div>
+                        <button id="refresh-fundamentals" class="button-secondary" type="button">刷新资料</button>
+                    </div>
+
+                    <div id="fundamentals-loading" class="fundamentals-loading hidden">
+                        <div class="spinner"></div>
+                        <span>正在汇总业绩、估值和研报...</span>
+                    </div>
+                    <div id="fundamentals-unavailable" class="data-notice hidden"></div>
+
+                    <div id="fundamentals-content" class="hidden">
+                        <div class="fundamental-tabs" role="tablist" aria-label="公司研究资料">
+                            <button class="fundamental-tab active" data-fundamental-tab="performance" type="button">业绩</button>
+                            <button class="fundamental-tab" data-fundamental-tab="valuation" type="button">估值</button>
+                            <button class="fundamental-tab" data-fundamental-tab="reports" type="button">研报</button>
+                            <button class="fundamental-tab" data-fundamental-tab="industry" type="button">行业题材</button>
+                        </div>
+
+                        <div id="fundamental-panel-performance" class="fundamental-panel active">
+                            <div id="performance-summary" class="fundamental-metrics"></div>
+                            <div class="research-table-wrap">
+                                <table class="research-table performance-table">
+                                    <thead>
+                                    <tr>
+                                        <th>报告期</th>
+                                        <th class="number-cell">营业收入</th>
+                                        <th class="number-cell">同比</th>
+                                        <th class="number-cell">归母净利润</th>
+                                        <th class="number-cell">同比</th>
+                                        <th class="number-cell">ROE</th>
+                                        <th class="number-cell">毛利率</th>
+                                        <th class="number-cell">资产负债率</th>
+                                        <th>来源</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="performance-body"></tbody>
+                                </table>
+                            </div>
+                            <p id="performance-empty" class="subtle-empty hidden">暂无可用业绩数据</p>
+                        </div>
+
+                        <div id="fundamental-panel-valuation" class="fundamental-panel">
+                            <div id="valuation-metrics" class="fundamental-metrics"></div>
+                            <div id="valuation-peer-wrap" class="research-table-wrap hidden">
+                                <table class="research-table peer-table">
+                                    <thead>
+                                    <tr>
+                                        <th>同行公司</th>
+                                        <th class="number-cell">PE-TTM</th>
+                                        <th class="number-cell">PB</th>
+                                        <th class="number-cell">PEG</th>
+                                        <th class="number-cell">排名</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="valuation-peer-body"></tbody>
+                                </table>
+                            </div>
+                            <p id="valuation-empty" class="subtle-empty hidden">暂无可用估值数据</p>
+                        </div>
+
+                        <div id="fundamental-panel-reports" class="fundamental-panel">
+                            <div id="research-report-list" class="research-report-list"></div>
+                            <p id="reports-empty" class="subtle-empty hidden">暂无近期机构研报</p>
+                        </div>
+
+                        <div id="fundamental-panel-industry" class="fundamental-panel">
+                            <div id="company-profile" class="company-profile"></div>
+                            <div id="industry-position" class="industry-position"></div>
+                            <div id="business-tags" class="business-tags"></div>
+                            <div id="data-sources" class="data-sources"></div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+        </section>
+
+        <section id="tab-watchlist" class="tab-panel">
+            <div class="page-heading">
+                <div>
+                    <h2>我的自选</h2>
+                    <p>勾选需要关注的股票后，可启动桌面透明置顶盯盘。</p>
+                </div>
+                <div class="watchlist-toolbar">
+                    <span id="monitor-selection-count">已选 0 只</span>
+                    <label class="monitor-interval" for="monitor-interval-seconds">
+                        每
+                        <input id="monitor-interval-seconds" type="number" value="5" min="1" max="300" step="1" inputmode="numeric">
+                        秒刷新
+                    </label>
+                    <button id="start-monitor" class="button-primary" type="button" disabled>开始盯盘</button>
+                    <button id="stop-monitor" class="button-secondary" type="button">停止盯盘</button>
+                    <button id="refresh-watchlist" class="button-secondary" type="button">刷新行情</button>
+                </div>
+            </div>
+
+            <div id="monitor-status" class="monitor-status hidden"></div>
+
+            <div id="watchlist-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在更新自选股...</p>
+            </div>
+            <div id="watchlist-empty" class="empty-state hidden">
+                <strong>还没有自选股</strong>
+                <p>从行情搜索中选择股票并加入自选。</p>
+            </div>
+            <div id="watchlist-table-wrap" class="stock-table-wrap hidden">
+                <table class="stock-table">
+                    <thead>
+                    <tr>
+                        <th>股票</th>
+                        <th class="number-cell">现价</th>
+                        <th class="number-cell">
+                            <button id="sort-change" class="sort-button" type="button" aria-label="按今日涨幅排序">
+                                今日涨幅 <span id="sort-change-icon">↓</span>
+                            </button>
+                        </th>
+                        <th class="number-cell">最高 / 最低</th>
+                        <th class="number-cell">成交量</th>
+                        <th class="number-cell">成交额</th>
+                        <th>行情时间</th>
+                        <th>操作</th>
+                        <th class="monitor-cell">
+                            <label class="table-check-label">
+                                <input id="select-all-monitor" type="checkbox">
+                                <span>盯盘</span>
+                            </label>
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody id="watchlist-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="tab-sectors" class="tab-panel">
+            <div class="page-heading">
+                <div>
+                    <h2>板块主线</h2>
+                    <p>按行业热度与资金流观察市场主线，并比较板块龙头候选的分时强度。</p>
+                </div>
+                <button id="refresh-sectors" class="button-secondary" type="button">刷新板块</button>
+            </div>
+
+            <div class="sector-method">
+                <strong>分时强度模型</strong>
+                <span>5分钟动量 25% · 3分钟动量 20% · 1分钟动量 10% · 板块相对强度 15% · 5分钟量比 15% · 主力净流入占比 15%</span>
+            </div>
+            <div id="sector-warnings" class="data-notice hidden"></div>
+            <div id="sector-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在更新板块行情与主线热度...</p>
+            </div>
+            <div id="sector-empty" class="empty-state hidden">
+                <strong>板块数据暂不可用</strong>
+                <p>AKShare 数据源可能正在超时，请稍后刷新。</p>
+            </div>
+
+            <div id="sector-table-wrap" class="stock-table-wrap hidden">
+                <table class="stock-table sector-table">
+                    <thead>
+                    <tr>
+                        <th><button class="sort-button sort-left" data-sector-sort="name" type="button">板块 <span data-sector-sort-icon="name"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="changePercent" type="button">今日涨幅 <span data-sector-sort-icon="changePercent"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="netInflow" type="button">主力净流入 <span data-sector-sort-icon="netInflow"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="netInflowRatio" type="button">净流入占比 <span data-sector-sort-icon="netInflowRatio"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="totalAmount" type="button">成交额 <span data-sector-sort-icon="totalAmount"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="companyCount" type="button">公司数 <span data-sector-sort-icon="companyCount"></span></button></th>
+                        <th><button class="sort-button sort-left" data-sector-sort="leaderName" type="button">领涨股 <span data-sector-sort-icon="leaderName"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="leaderChangePercent" type="button">领涨幅 <span data-sector-sort-icon="leaderChangePercent"></span></button></th>
+                        <th class="number-cell"><button class="sort-button" data-sector-sort="score" type="button">主线评分 <span data-sector-sort-icon="score">↓</span></button></th>
+                        <th><button class="sort-button sort-left" data-sector-sort="status" type="button">状态 <span data-sector-sort-icon="status"></span></button></th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="sector-body"></tbody>
+                </table>
+            </div>
+
+        </section>
+
+        <section id="tab-sector-strength" class="tab-panel">
+            <div class="section-heading sector-detail-heading">
+                <div>
+                    <h2 id="sector-detail-title">板块龙头 Top10 分时强度</h2>
+                    <p id="sector-detail-meta">请先从板块主线或搜索结果选择一个板块。</p>
+                </div>
+                <div class="top10-refresh-toolbar">
+                    <label class="monitor-interval" for="top10-interval-seconds">
+                        每
+                        <input id="top10-interval-seconds" type="number" value="30" min="5" max="3600" step="1" inputmode="numeric">
+                        秒
+                    </label>
+                    <button id="refresh-sector-detail" class="button-secondary" type="button" disabled>刷新强度</button>
+                    <button id="start-top10-auto-refresh" class="button-primary" type="button" disabled>开启定时刷新</button>
+                    <button id="stop-top10-auto-refresh" class="button-secondary" type="button" disabled>停止定时</button>
+                </div>
+            </div>
+            <div id="top10-auto-status" class="monitor-status hidden"></div>
+            <div id="sector-selected-summary" class="sector-selected-summary hidden"></div>
+            <p id="sector-formula" class="sector-formula"></p>
+            <div id="sector-detail-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在计算 Top10 龙头的分钟动量、量价强度、业绩和研报...</p>
+            </div>
+            <div id="sector-detail-empty" class="empty-state">
+                <strong>先选择一个板块</strong>
+                <p>从板块主线点击板块，或在行情搜索中输入机器人、半导体等板块名称。</p>
+            </div>
+            <div id="sector-strength-table-wrap" class="stock-table-wrap hidden">
+                <table class="stock-table strength-table">
+                    <thead>
+                    <tr>
+                        <th>龙头候选</th>
+                        <th class="number-cell">排名</th>
+                        <th>近36分钟</th>
+                        <th class="number-cell">现价 / 日涨幅</th>
+                        <th>1 / 3 / 5分动量</th>
+                        <th class="number-cell">5分钟量比</th>
+                        <th class="number-cell">主力净流入</th>
+                        <th class="number-cell">动态PE</th>
+                        <th>最近研报评级</th>
+                        <th>近2年单季营收</th>
+                        <th>近2年单季利润</th>
+                        <th class="number-cell">强度分</th>
+                    </tr>
+                    </thead>
+                    <tbody id="sector-strength-body"></tbody>
+                </table>
+            </div>
+            <p id="sector-detail-source" class="data-time"></p>
+        </section>
+
+        <section id="tab-ranking-logs" class="tab-panel">
+            <div class="page-heading ranking-log-heading">
+                <div>
+                    <h2>龙头 Top10 排名日志</h2>
+                    <p>记录每次板块强度刷新结果，统计个股进入前三及各名次的稳定性。</p>
+                </div>
+                <div class="ranking-log-toolbar">
+                    <label for="ranking-log-date">交易日期</label>
+                    <input id="ranking-log-date" type="date">
+                    <button id="refresh-ranking-logs" class="button-secondary" type="button">刷新日志</button>
+                </div>
+            </div>
+            <div id="ranking-log-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在汇总刷新记录和个股名次...</p>
+            </div>
+            <div id="ranking-log-empty" class="empty-state hidden">
+                <strong>当天还没有排名日志</strong>
+                <p>打开龙头 Top10 并刷新板块后，每次成功返回的前十名会自动记录。</p>
+            </div>
+            <div id="ranking-log-content" class="hidden">
+                <div id="ranking-log-overview" class="ranking-log-overview"></div>
+                <div id="ranking-statistics"></div>
+                <section class="ranking-snapshot-section">
+                    <div class="section-heading">
+                        <div>
+                            <h2>每次刷新明细</h2>
+                            <p>按时间倒序展示每次刷新对应的完整 Top10。</p>
+                        </div>
+                    </div>
+                    <div class="stock-table-wrap">
+                        <table class="stock-table ranking-snapshot-table">
+                            <thead>
+                            <tr>
+                                <th>刷新时间</th>
+                                <th>板块</th>
+                                <th>当次 Top10</th>
+                            </tr>
+                            </thead>
+                            <tbody id="ranking-snapshot-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="tab-capital-flow" class="tab-panel">
+            <div class="page-heading">
+                <div>
+                    <h2>资金流向</h2>
+                    <p>展示自选股最近交易日的真实资金净流入及分单数据。</p>
+                </div>
+                <button id="refresh-capital-flow" class="button-secondary" type="button">刷新资金流</button>
+            </div>
+
+            <div id="capital-flow-loading" class="status-block hidden">
+                <div class="spinner"></div>
+                <p>正在获取资金流数据...</p>
+            </div>
+            <div id="capital-flow-empty" class="empty-state hidden">
+                <strong>暂无资金流数据</strong>
+                <p>请先添加自选股，或稍后重新刷新。</p>
+            </div>
+            <div id="capital-flow-summary" class="flow-summary hidden"></div>
+            <div id="capital-flow-table-wrap" class="stock-table-wrap hidden">
+                <table class="stock-table flow-table">
+                    <thead>
+                    <tr>
+                        <th>股票</th>
+                        <th>数据日期</th>
+                        <th class="number-cell">收盘涨幅</th>
+                        <th class="number-cell">净流入</th>
+                        <th class="number-cell">净流入占比</th>
+                        <th class="number-cell">超大单</th>
+                        <th class="number-cell">大单</th>
+                        <th class="number-cell">中单</th>
+                        <th class="number-cell">小单</th>
+                    </tr>
+                    </thead>
+                    <tbody id="capital-flow-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="tab-research" class="tab-panel">
+            <div class="page-heading">
+                <div>
+                    <h2>AI研究室</h2>
+                    <p>AI只在你主动发起时工作，并明确区分行情事实、分析判断和缺失数据。</p>
+                </div>
+            </div>
+
+            <div id="research-empty" class="empty-state">
+                <strong>还没有研究对象</strong>
+                <p>先在行情搜索或自选股中选择“AI研判”。</p>
+            </div>
+
+            <div id="research-workspace" class="research-workspace hidden">
+                <div class="research-stock-bar">
+                    <div>
+                        <strong id="research-stock-name"></strong>
+                        <span id="research-stock-code" class="stock-code"></span>
+                    </div>
+                    <span id="research-stock-price"></span>
+                </div>
+
+                <div class="prompt-presets" role="group" aria-label="研究方向">
+                    <button class="prompt-chip active" data-focus="review" type="button">综合研判</button>
+                    <button class="prompt-chip" data-focus="trend" type="button">走势解读</button>
+                    <button class="prompt-chip" data-focus="fundamental" type="button">研究框架</button>
+                    <button class="prompt-chip" data-focus="risk" type="button">风险检查</button>
+                </div>
+
+                <form id="insight-form" class="question-form">
+                    <label for="insight-question">你想重点了解什么？</label>
+                    <textarea id="insight-question" maxlength="500" rows="4" placeholder="可以留空使用上方研究方向，也可以输入具体问题"></textarea>
+                    <div class="question-actions">
+                        <span><span id="question-count">0</span>/500</span>
+                        <button id="insight-submit" class="button-primary" type="submit">开始研判</button>
+                    </div>
+                </form>
+
+                <div id="insight-loading" class="status-block hidden">
+                    <div class="spinner"></div>
+                    <p>AI正在结合当前行情组织回答...</p>
+                </div>
+                <section id="insight-result" class="insight-result hidden" aria-live="polite"></section>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>

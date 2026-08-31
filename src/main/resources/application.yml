@@ -1,0 +1,46 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  jackson:
+    default-property-inclusion: non_null
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_gp_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: false
+
+logging:
+  charset:
+    console: UTF-8
+    file: UTF-8
+  level:
+    dev.learning.stockanalyzer: DEBUG
+
+stock:
+  fundamentals:
+    enabled: ${FUNDAMENTALS_ENABLED:true}
+    base-url: ${AKSHARE_BASE_URL:http://127.0.0.1:8765}
+    timeout: ${FUNDAMENTALS_TIMEOUT:28s}
+    cache-ttl: ${FUNDAMENTALS_CACHE_TTL:30m}
+    auto-start: ${AKSHARE_AUTO_START:true}
+    python-executable: ${AKSHARE_PYTHON:}
+    script-path: scripts/akshare_service.py
+    request-timeout-seconds: ${AKSHARE_REQUEST_TIMEOUT:7}
+  ai:
+    api-key: ${ZHIPU_API_KEY:}
+    base-url: ${ZHIPU_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    model-name: ${ZHIPU_MODEL:glm-4-flash}
+    timeout: 90s
+    proxy-host: ${ZHIPU_PROXY_HOST:}
+    proxy-port: ${ZHIPU_PROXY_PORT:0}
